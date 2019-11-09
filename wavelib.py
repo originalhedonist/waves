@@ -16,15 +16,15 @@ class wavegenerator:
 
         self.length = length
         self.channels = channels
-        self.sample = 44100
-        self.N = self.sample * self.length
+        self.T = 44100
+        self.N = self.T * self.length
 
     def write(self, filename):
         setuplogging()
 
         wf = wave.open(filename, 'wb')
         wf.setsampwidth(2)
-        wf.setframerate(self.sample)
+        wf.setframerate(self.T)
         wf.setnframes(self.N)
         logging.info('setting channels to %d', self.channels)
         wf.setnchannels(self.channels)
@@ -36,6 +36,7 @@ class wavegenerator:
                     self.writefloat(wf, self.wavefunctionright(n, t), n, t)
 
             logging.info('Created %s', filename)
+            logging.info('final values: f = %f, x = %f, dx = %f', self.f, self.x, self.dx)
         finally:
             wf.close()
 
