@@ -3,55 +3,52 @@ import struct
 import sys
 import wave
 
-logging.basicConfig(stream=sys.stderr, level=logging.DEBUG, format='%(message)s')
+
+def setuplogging():
+    logging.basicConfig(stream=sys.stderr, level=logging.DEBUG, format='%(message)s')
 
 
-def createmono(filename, length, wavefunction):
-    sample = 44100
-    N = sample * length
-    wf = wave.open(filename, 'wb')
-    wf.setsampwidth(2)
-    wf.setframerate(sample)
-    wf.setnframes(N)
-    wf.setnchannels(1)
-    try:
-        for n in range(0, N):
-            t = length * n / N
-            a = wavefunction(n, t, N)
-            if a > 1 or a < -1:
-                raise Exception('wavefunction returned {} for n = {}, t = {}'.format(a, n, t))
+# noinspection PyMethodMayBeStatic
+class wavegenerator:
+    def __init__(self, length, channels):
+        if channels < 1 or channels > 2:
+            raise Exception("channels must be either 1 or 2")
 
-            A = int(((a + 1) * 32767) - 32768)
-            thebytes = struct.pack("<h", A)
-            wf.writeframes(thebytes)
-    finally:
-        wf.close()
+        self.length = length
+        self.channels = channels
+        self.sample = 44100
+        self.N = self.sample * self.length
 
+    def write(self, filename):
+        setuplogging()
 
-def createstereo(filename, length, wavefunctionL, wavefunctionR):
-    sample = 44100
-    N = sample * length
-    wf = wave.open(filename, 'wb')
-    wf.setsampwidth(2)
-    wf.setframerate(sample)
-    wf.setnframes(N)
-    wf.setnchannels(2)
-    try:
-        for n in range(0, N):
-            t = length * n / N
-            aL = wavefunctionL(n, t, N, 0)
-            aR = wavefunctionR(n, t, N, 1)
+        wf = wave.open(filename, 'wb')
+        wf.setsampwidth(2)
+        wf.setframerate(self.sample)
+        wf.setnframes(self.N)
+        logging.info('setting channels to %d', self.channels)
+        wf.setnchannels(self.channels)
+        try:
+            for n in range(0, self.N):
+                t = self.length * n / self.N
+                self.writefloat(wf, self.wavefunctionleft(n, t), n, t)
+                if self.channels == 2:
+                    self.writefloat(wf, self.wavefunctionright(n, t), n, t)
 
-            if aL > 1 or aL < -1:
-                raise Exception('wavefunctionL returned {} for n = {}, t = {}'.format(a, n, t))
-            if aR > 1 or aR < -1:
-                raise Exception('wavefunctionR returned {} for n = {}, t = {}'.format(a, n, t))
+            logging.info('Created %s', filename)
+        finally:
+            wf.close()
 
-            AL = int(((aL + 1) * 32767) - 32768)
-            AR = int(((aR + 1) * 32767) - 32768)
-            thebytes = bytearray(struct.pack("<h", AL))
-            wf.writeframes(thebytes)
-            thebytes = bytearray(struct.pack("<h", AR))
-            wf.writeframes(thebytes)
-    finally:
-        wf.close()
+    def writefloat(self, wf, a, n, t):
+        if a > 1 or a < -1:
+            raise Exception('wavefunction returned {} for n = {}, t = {}'.format(a, n, t))
+
+        A = int(((a + 1) * 32767) - 32768)
+        thebytes = struct.pack("<h", A)
+        wf.writeframes(thebytes)
+
+    def wavefunctionleft(self, n, t):
+        return 0
+
+    def wavefunctionright(self, n, t):
+        return self.wavefunctionleft(n, t)
